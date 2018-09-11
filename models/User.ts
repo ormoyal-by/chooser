@@ -1,9 +1,31 @@
-const {mongoose} = require('./../db/mongoose');
-const {Role} = require('./../models/Role');
+// const {mongoose} = require('./../db/mongoose');
+import mongoose from './../db/mongoose';
+import Role from './../models/Role';
+import { ObjectID } from 'bson';
+import { Document, Model, MongooseDocument } from 'mongoose';
+import { NextFunction } from 'express';
+// const {Role} = require('./../models/Role');
 
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const bcryptjs = require('bcryptjs');
+
+
+export interface IUserModel extends Model<IUser> {
+    hashPassword(password: string): boolean;
+}
+
+
+export interface IUser extends Document {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    auth_code?: string;
+    ID_card?: string;
+    phone?: string;
+    deleted?: boolean;
+    role_id: ObjectID;
+  }
 
 
 let userSchema = new mongoose.Schema({
@@ -17,17 +39,31 @@ let userSchema = new mongoose.Schema({
     last_name:{
         type:String,
         minlength:2,
+        required:true,
         trim:true
     },
     email:{
         type:String,
         unique:true,
-        required:true,
+        // required:true,
         trim:true,
         validate:{
             validator:validator.isEmail,
             message:'"{VALUE}" is not a valid email'
         }
+    },
+    code:{
+        auth_code:{
+            type:String,
+            minlength:4,
+            trim:true,
+            default: null,
+        },
+        try:{
+            type:Number,
+            default: 0,
+            required: true
+        }   
     },
     ID_card:{
         type:String,
@@ -43,14 +79,49 @@ let userSchema = new mongoose.Schema({
         trim:true,
         required:true
     },
+    agreement:{
+        type:Boolean,
+        default:false,
+        required:true
+    },
     deleted:{
         type:Boolean,
         default:false,
         required:true
     },
+
+    candidates:[{
+        candidate:{
+            type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
+            required:true
+        },
+        supported:{
+            type: Boolean,
+            default: false,
+            required: true
+        }
+    }],
+    // attach_me:{
+    //     type: mongoose.Schema.Types.ObjectId, ref: 'User',
+    // },
+    attached:[{
+        user_id:{
+            type: mongoose.Schema.Types.ObjectId, ref: 'User',
+        },
+        link:{
+            type:Boolean,
+            required:true,
+            default:false
+        }
+    }],
     role_id:{
         type: mongoose.Schema.Types.ObjectId, ref: 'Role',
         required:true
+    },
+    createdAt:{
+        type:Date,
+        required:true,
+        default:Date.now()
     }
     
 
@@ -59,7 +130,7 @@ let userSchema = new mongoose.Schema({
 userSchema.methods.toJSON = function(){
     let user = this.toObject();
 
-    delete user.password;
+    delete user.code;
     // delete user.tokens;
     // console.log('User From toJSON response ',user)
 
@@ -74,7 +145,7 @@ userSchema.methods.generateToken = function(){
         return token;
 };
 
-userSchema.methods.removeToken = function (token){
+userSchema.methods.removeToken = function (token: String){
     // change to header?
     const user = this;
 
@@ -88,7 +159,7 @@ userSchema.methods.removeToken = function (token){
 };
 
 
-userSchema.pre('save', function (next) {
+userSchema.pre('save', function (next: NextFunction) {
     let user = this;
     if(user.isModified('password')){
         bcryptjs.genSalt(10,(err,salt) => {
@@ -132,7 +203,7 @@ userSchema.statics.findByToken = function(token){
 };
 
 
-var User = mongoose.model('User',userSchema);
+export const User = mongoose.model('User',userSchema);
 
 
-module.exports = {User};
+// export default User;

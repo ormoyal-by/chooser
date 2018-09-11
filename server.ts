@@ -1,7 +1,12 @@
-require('./config/config');
+require('./config/environment');
 
-const express = require('express');
-const bodyParser = require('body-parser');
+import {Request, Response, NextFunction, Express} from "express";
+import express from "express";
+import bodyParser from "body-parser";
+
+// const express = require('express');
+// const bodyParser = require('body-parser');
+
 const {responseErrors} = require('./responses/response');
 
 // const moment = require('moment');
@@ -9,7 +14,8 @@ const {responseErrors} = require('./responses/response');
 
 // const {upload} = require('./pictures');
 
-// const {authentication} = require('./middleware/authentication');
+const {authentication} = require('./middleware/authentication');
+const {admin} = require('./middleware/admin');
 
 
 
@@ -26,6 +32,9 @@ app.listen(port, () => {
 
 app.use(bodyParser.json());
 // app.use(authentication);
+
+
+
 
 
 
@@ -90,9 +99,12 @@ app.use(bodyParser.json());
 
 
 
-module.exports = {app, responseErrors};
+export {app, responseErrors};
 
-require('./controllers/UserController');
+require('./config/routes');
+
+
+// require('./controllers/UserController');
 // require('./controllers/SeedController');
 // require('./controllers/CustomerController');
 // require('./controllers/OrderController');
@@ -104,3 +116,4 @@ require('./controllers/UserController');
 // require('./controllers/EventController');
 // require('./controllers/RepairController');
 
+export {}

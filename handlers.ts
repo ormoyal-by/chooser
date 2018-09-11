@@ -1,41 +1,19 @@
 const mongoose = require('mongoose');
-var request = require('request');
 
 const ObjectId = mongoose.Types.ObjectId;
-const {responseErrors} = require('./server');
+// import {responseErrors} from './server';
 
 // const {Role} = require('./models/Role');
-const {User} = require('./models/User');
+// const {User} = require('./models/User');
+// import User from './models/User' ;
+import { ObjectID } from 'bson';
+import { MongooseDocument, Model } from 'mongoose';
+
 // const {Project} = require('./models/Project');
 // const {Order} = require('./models/Order');
 // const _ = require('lodash');
 
 
-const createAt = (ObjId) => {
-
-}
-
-const smsConfirm = (phone, msg, sender = "WinChoise") => {
-    return new Promise((resolve,reject) => {
-        var params = {msg, recipient: phone, sms_sender:sender};
-        request.post({
-                url: "https://lead4you.co.il/api/mailing/sendSMSJson.php",
-                method: "POST",
-                json:true,
-                body: params
-            },function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    if(!body.success){
-                        reject("אירעה שגיאה בשליחת ההודעה");
-                    }
-                    resolve();
-                }else{
-                    reject("אירעה שגיאה בשליחת ההודעה");
-                }
-            }
-        );
-    });
-}
 // const setKeyValue = (body, instance) => {
 //     // console.log('body ',body);
 //     // console.log('instance ',instance);
@@ -46,18 +24,24 @@ const smsConfirm = (phone, msg, sender = "WinChoise") => {
 // }
 
 // get id and collection, check if id exist in collection, return obj found or reject
-const idExist = (id,collection) => {
+const idExist = (id: ObjectID, collection: any) => {
     return new Promise((resolve, reject) => {
-        if(!ObjectId.isValid(id))
+        let coll = collection.collection.collectionName + "_id";
+        let rejected = {};
+
+        if(!ObjectId.isValid(id)){
+            rejected[coll] = "ObjectID";
+            reject(rejected);
+        }
             // reject(`invalid ${collection.collection.collectionName} id`);
-            resolve();
-        collection.findById(id).then(idObj => {
+            // resolve();
+        collection.findById(id).then((idObj: MongooseDocument) => {
             if(!idObj){
-                // responseErrors(err);
-                reject(`unable to fetch id from ${collection.collection.collectionName}`);
+                rejected[coll] = "notFoundObjectID";
+                reject(rejected);
             }
             resolve(idObj);
-        }).catch(e => {
+        }).catch((e: String) => {
             reject(e);
         });
     });
@@ -270,4 +254,4 @@ const idExist = (id,collection) => {
 // module.exports = {setKeyValue,fetchRole,validateProperties,
 //     idExist,getQueryUrl,orderToProjectManager,orderToSuperProjectManager,rolesAllowed,getFilesName,responseErrors};
 
-module.exports = {idExist, smsConfirm};
+module.exports = {idExist};

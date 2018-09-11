@@ -3,3 +3,4 @@ node_modules/
 config/config.json
 documentation/
 win_front_mobile_Folder
+dist/
