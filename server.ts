@@ -29,9 +29,16 @@ app.listen(port, () => {
     console.log(`run on port ${port}`);
 });
 
+export const allowedRequests = [
+    '/users/byLink',
+    '/users/login',
+    '/sendSms',
+    'confirmSupport'
+]
+
 
 app.use(bodyParser.json());
-// app.use(authentication);
+app.use(authentication);
 
 
 

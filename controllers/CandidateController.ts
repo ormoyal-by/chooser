@@ -16,7 +16,10 @@ import { ObjectId } from 'bson';
 
 export const create = async (req: Request, res: Response, next: NextFunction) => {
     try{
-        let body = _.pick(req.body, ['name','about_us','logo','background','color_1','color_2','workers','users']);
+        let body = _.pick(req.body, ['name','about_us','logo','background','color_1','color_2','workers']);
+        // body.users = _.map(req.body.users, _.partialRight(_.pick, ['user', 'status']));
+
+        console.log(body);
         // to check if there is attach_me then update the attached to the bring user
 
         const candidate = new Candidate(body);
@@ -41,6 +44,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         res.send(candidate);
 
     } catch(err) {
+        console.log(err);
         res.status(400).send(responseErrors(err));
     };
 };

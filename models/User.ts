@@ -52,19 +52,6 @@ let userSchema = new mongoose.Schema({
             message:'"{VALUE}" is not a valid email'
         }
     },
-    code:{
-        auth_code:{
-            type:String,
-            minlength:4,
-            trim:true,
-            default: null,
-        },
-        try:{
-            type:Number,
-            default: 0,
-            required: true
-        }   
-    },
     ID_card:{
         type:String,
         minlength:5,
@@ -89,17 +76,29 @@ let userSchema = new mongoose.Schema({
         default:false,
         required:true
     },
-
-    candidates:[{
-        candidate:{
-            type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
-            required:true
+    code:{
+        auth_code:{
+            type:String,
+            minlength:4,
+            trim:true,
+            default: null,
         },
-        supported:{
-            type: Boolean,
-            default: false,
+        try:{
+            type:Number,
+            default: 0,
             required: true
-        }
+        }   
+    },
+    lead_counter:{
+        type:Number,
+        default: 0,
+        required: true   
+    },
+    candidates:[{
+
+        type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
+        required:true
+
     }],
     // attach_me:{
     //     type: mongoose.Schema.Types.ObjectId, ref: 'User',
