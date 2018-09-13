@@ -33,7 +33,8 @@ export const allowedRequests = [
     '/users/byLink',
     '/users/login',
     '/sendSms',
-    'confirmSupport'
+    '/confirmSupport',
+    '/create'
 ]
 
 

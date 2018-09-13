@@ -17,14 +17,11 @@ import mongoose from 'mongoose';
 const ObjectId = mongoose.Types.ObjectId;
 
 
-export const createByUser = async (req: Request, res: Response, next: NextFunction) => {
+export const create = async (req: Request, res: Response, next: NextFunction) => {
     try{
         let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','agreement','candidate_id','role_id']);
 
         const user = new User(body);
-
-        let bringsUser = await User.findById(req.user._id);
-        // let bringsUserId = await idExist(req.query.id,User);
 
         user.role_id = await Role.findOne({name:"User"});
 
@@ -36,22 +33,69 @@ export const createByUser = async (req: Request, res: Response, next: NextFuncti
         //     candidate: supportedCandidate._id,
         //     status: 0
         // }
-        user.candidates = supportedCandidate._id;
+        // user.candidates = supportedCandidate._id;
 
 
         await user.save();
 
         // let bringsUser = new User(bringsUserId);
-        let attached = {
-            user_id: user._id,
-            link: false
-        }
-        bringsUser.attached[bringsUser.attached.length] = attached;
-        await bringsUser.save();
+        // let attached = {
+        //     user_id: user._id,
+        //     link: false
+        // }
+        // updateCandidatesAndAttached(bringsUser, supportedCandidate, user, false);
+        
 
-        const updatedCandidate = await updateCandidateUsers(supportedCandidate, user, 2);
+        updateCandidateUsers(supportedCandidate, user, 2);
+        const token = await user.generateToken();
+        res.header('x-auth',token).send(user);
 
-        let msg = `שלום ${user.first_name}, ${bringsUser.first_name} ${bringsUser.last_name} רשם אותך לתמוך ב${supportedCandidate.name}, נא כנס לאשר https://WinChoise.co.il?phone=${user.phone}&candidate_id=${supportedCandidate._id}`;
+
+    } catch(err) {
+        res.status(400).send(responseErrors(err));
+    };
+};
+
+export const createByUser = async (req: Request, res: Response, next: NextFunction) => {
+    try{
+        let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','agreement','candidate_id','role_id']);
+
+        const user = new User(body);
+
+        let bringsUser = await User.findById(req.user._id);
+
+        user.role_id = await Role.findOne({name:"User"});
+
+        if(!user.role_id) 
+            throw {role_id:"notFoundObjectID"}
+
+        const supportedCandidate = await idExist(body.candidate_id,Candidate);
+        // let candidates = {
+        //     candidate: supportedCandidate._id,
+        //     status: 0
+        // }
+        // user.candidates = supportedCandidate._id;
+
+        user.candidates[0] = {
+            candidate_id: supportedCandidate._id,
+            attached: []
+        };
+
+        await user.save();
+        // await updateCandidatesAndAttached(user, supportedCandidate, null, null);
+
+        updateCandidatesAndAttached(bringsUser, supportedCandidate, user, false);
+
+        // let attached = {
+        //     user_id: user._id,
+        //     link: false
+        // }
+        // bringsUser.attached[bringsUser.attached.length] = attached;
+        // await bringsUser.save();
+
+        updateCandidateUsers(supportedCandidate, user, 2);
+
+        let msg = `שלום ${user.first_name}, ${bringsUser.first_name} ${bringsUser.last_name} רשם אותך לתמוך ב${supportedCandidate.name}, נא כנס לאשר https://WinChoise.co.il/users/confirmSupport?phone=${user.phone}&candidate_id=${supportedCandidate._id}`;
         req.sendSms_msg = msg;
         sendSms(req,res,next);
 
@@ -66,34 +110,27 @@ export const createByLink = async (req: Request, res: Response) => {
         // role id of support
         let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','agreement']);
 
-
         const user = new User(body);
-        // if(req.query.id){
-        var bringsUser = await idExist(req.query.id,User);
-        
+        let bringsUser = await idExist(req.query.id,User);
         let supportedCandidate = await idExist(req.query.candidate_id,Candidate);
-        user.candidates = supportedCandidate._id;
 
         user.role_id = await Role.findOne({name:"User"});
 
         if(!user.role_id) 
             throw {role_id:"notFoundObjectID"}
 
+        user.candidates[0] = {
+            candidate_id: supportedCandidate._id
+        };
+    
         await user.save();
 
-        // let bringsUser = new User(bringsUserId);
-        let attached = {
-            user_id: user._id,
-            link: true
-        }
-        bringsUser.attached[bringsUser.attached.length] = attached;
-        bringsUser.lead_counter++;
-        // console.log('bringsUserbringsUserbringsUser ',bringsUser);
+        updateCandidatesAndAttached(bringsUser, supportedCandidate, user, true);
 
-        await bringsUser.save();
+        
+        // await bringsUser.save();
 
-        const {updatedCandidate} = await updateCandidateUsers(supportedCandidate, user, 2);
-        // console.log('updatedCandidateupdatedCandidateupdatedCandidate ',updatedCandidate);
+        updateCandidateUsers(supportedCandidate, user, 2);
         
         const token = await user.generateToken();
         res.header('x-auth',token).send(user);
@@ -116,18 +153,18 @@ export const confirmSupport = async (req: Request, res: Response, next: NextFunc
         if(!req.body.status && req.body.status !== 0)
             throw {status: "Number"};
 
-        if(req.body.status === 1){
-            if(!foundUser.ID_card && !req.body.ID_card){
-                throw {ID_card:"required"}  
-            }else{
-                foundUser.ID_card = req.body.ID_card;
-            }
-                
-        }
+        // when ID_card is not required
+        // if(req.body.status === 1){
+        //     if(!foundUser.ID_card && !req.body.ID_card){
+        //         throw {ID_card:"required"}  
+        //     }else{
+        //         foundUser.ID_card = req.body.ID_card;
+        //     }    
+        // }
 
         await foundUser.save();
 
-        const {updatedCandidate} = await updateCandidateUsers(candidate, foundUser, req.body.status);
+        await updateCandidateUsers(candidate, foundUser, req.body.status);
         // console.log('updatedCandidate updatedCandidate     ',updatedCandidate);
         res.status(200).send({message:"תודה על תשובתך"});
 
@@ -143,6 +180,7 @@ export enum Status {
 }
 
 export const updateCandidateUsers = async (candidate, user, status) => {
+    
     var usersObj = {
         user: user._id,
         status: status
@@ -156,11 +194,59 @@ export const updateCandidateUsers = async (candidate, user, status) => {
     // if user already exist, update only is status
     if(!updatedCandidate)   
         await Candidate.update({_id: candidate._id, 'users.user': {$eq: user._id}}, {$set:{'users.$.status': status}});   
-    // update user candidate list if not exist
-    const updatedUser = await User.update({_id: user._id}, {$addToSet: {candidates: candidate._id}});
 
-    return {updatedCandidate, updatedUser};
+    return updatedCandidate;
 }
+
+
+export const updateCandidatesAndAttached = async (bringUser, candidate, newUser, link) => {
+
+    // update user candidate list, only candidate if not exist
+    if(!newUser && !link){
+
+        var emptyCandidateObj = {
+            candidate_id: candidate._id,
+            attached: []
+        }
+        const newCandidate = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$ne: candidate._id}}, {$push: {candidates: emptyCandidateObj}}, { new: true });
+        // console.log('newCandidate ',newCandidate);
+    }else{
+        if(link){
+            console.log(bringUser);
+            bringUser.lead_counter++;
+            bringUser.save();
+        }
+
+        var candidateObj = {
+            candidate_id: candidate._id,
+            attached: [{
+                user_id: newUser._id,
+                link: link
+            }]
+        }
+    
+        var attachedObj = {
+            user_id: newUser._id,
+            link: link
+        }
+        // create new candidate and add user to attached
+        const updatedCandidate = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$ne: candidate._id}}, {$push: {candidates: candidateObj}}, { new: true });
+        // console.log('updatedCandidate1111 ',updatedCandidate)
+    
+        if(!updatedCandidate){
+            // add user to attached if user not exist
+            const updatedUser = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$eq: candidate._id}}, {$push: {'candidates.$.attached': attachedObj}}, { new: true });
+            // console.log('updatedUser ',updatedUser);
+        
+        }
+    }
+}
+
+
+
+
+
+export const becomeSupport 
 
 
 // support in new candidate
@@ -168,28 +254,28 @@ export const updateCandidateUsers = async (candidate, user, status) => {
 
 
 
-app.get('/users', (req,res) => {
-    getQueryUrl(req,['id','role_id']).then(search => {
-        if(search._id){
-            User.findOne(search).populate('project_managers').then(user => {
-                if(!user)
-                    return res.status(404).send('unable to find user');
+// app.get('/users', (req,res) => {
+//     getQueryUrl(req,['id','role_id']).then(search => {
+//         if(search._id){
+//             User.findOne(search).populate('project_managers').then(user => {
+//                 if(!user)
+//                     return res.status(404).send('unable to find user');
 
-                res.status(200).send(user);
-            }).catch(err => {
-                res.status(400).send(responseErrors(err));
-            });
-        }else{
-            User.find(search).then(users => {
-                res.status(200).send(users);
-            }).catch(err => {
-                return res.status(400).send(responseErrors(err));
-            });
-        }
-    }).catch(err => {
-        return res.status(400).send(responseErrors(err));
-    })
-});
+//                 res.status(200).send(user);
+//             }).catch(err => {
+//                 res.status(400).send(responseErrors(err));
+//             });
+//         }else{
+//             User.find(search).then(users => {
+//                 res.status(200).send(users);
+//             }).catch(err => {
+//                 return res.status(400).send(responseErrors(err));
+//             });
+//         }
+//     }).catch(err => {
+//         return res.status(400).send(responseErrors(err));
+//     })
+// });
 
 // app.patch('/users/:id', async (req,res) => {
 //     var id = req.params.id;

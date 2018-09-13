@@ -54,6 +54,7 @@ let userSchema = new mongoose.Schema({
     },
     ID_card:{
         type:String,
+        required:true,
         minlength:5,
         maxlength:9,
         trim:true
@@ -95,24 +96,26 @@ let userSchema = new mongoose.Schema({
         required: true   
     },
     candidates:[{
-
-        type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
-        required:true
-
+        candidate_id:{
+            type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
+            required:true
+        },
+        attached:[{
+            user_id:{
+                type: mongoose.Schema.Types.ObjectId, ref: 'User',
+                required:true
+            },
+            link:{
+                type:Boolean,
+                required:true,
+                default:false
+            }
+        }]
     }],
     // attach_me:{
     //     type: mongoose.Schema.Types.ObjectId, ref: 'User',
     // },
-    attached:[{
-        user_id:{
-            type: mongoose.Schema.Types.ObjectId, ref: 'User',
-        },
-        link:{
-            type:Boolean,
-            required:true,
-            default:false
-        }
-    }],
+    
     role_id:{
         type: mongoose.Schema.Types.ObjectId, ref: 'Role',
         required:true
