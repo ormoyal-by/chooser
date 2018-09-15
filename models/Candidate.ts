@@ -55,16 +55,16 @@ let candidateSchema = new mongoose.Schema({
         // required:true
     }],
     users:[{
-        user:{
+        // user:{
             type: mongoose.Schema.Types.ObjectId, ref: 'User',
             // unique:true
             // required:true
-        },
-        status:{
-            type:Number,
-            default: 1,
-            required: true   
-        }
+        // },
+        // status:{
+        //     type:Number,
+        //     default: 1,
+        //     required: true   
+        // }
     }],
     createdAt:{
         type:Date,

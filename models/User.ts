@@ -17,13 +17,18 @@ export interface IUserModel extends Model<IUser> {
 
 
 export interface IUser extends Document {
-    email?: string;
-    firstName?: string;
-    lastName?: string;
-    auth_code?: string;
-    ID_card?: string;
-    phone?: string;
-    deleted?: boolean;
+    email: string;
+    firstName: string;
+    lastName: string;
+    code: {
+        auth_code: string;
+        try: number
+    };
+    ID_card: string;
+    phone: string;
+    deleted: boolean;
+    agreement: boolean;
+    lead_counter
     role_id: ObjectID;
   }
 
@@ -45,7 +50,6 @@ let userSchema = new mongoose.Schema({
     email:{
         type:String,
         unique:true,
-        // required:true,
         trim:true,
         validate:{
             validator:validator.isEmail,
@@ -55,6 +59,7 @@ let userSchema = new mongoose.Schema({
     ID_card:{
         type:String,
         required:true,
+        unique:true,
         minlength:5,
         maxlength:9,
         trim:true
@@ -90,15 +95,20 @@ let userSchema = new mongoose.Schema({
             required: true
         }   
     },
-    lead_counter:{
-        type:Number,
-        default: 0,
-        required: true   
-    },
+    // lead_counter:{
+    //     type:Number,
+    //     default: 0,
+    //     required: true   
+    // },
     candidates:[{
         candidate_id:{
             type: mongoose.Schema.Types.ObjectId, ref: 'Candidate',
             required:true
+        },
+        status:{
+            type:Number,
+            default: 2,
+            required: true   
         },
         attached:[{
             user_id:{

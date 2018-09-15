@@ -43,10 +43,10 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         //     user_id: user._id,
         //     link: false
         // }
-        // updateCandidatesAndAttached(bringsUser, supportedCandidate, user, false);
+        // updateUserCandidateAndAttached(bringsUser, supportedCandidate, user, false);
         
 
-        updateCandidateUsers(supportedCandidate, user, 2);
+        updateCandidateUsers(supportedCandidate._id, user._id, 2);
         const token = await user.generateToken();
         res.header('x-auth',token).send(user);
 
@@ -58,23 +58,43 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 export const createByUser = async (req: Request, res: Response, next: NextFunction) => {
     try{
-        let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','agreement','candidate_id','role_id']);
+        let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','candidate_id']);
 
-        const user = new User(body);
+        const supportedCandidate = await idExist(body.candidate_id,Candidate);
+
+        let user = await User.findOne({ID_card: body.ID_card});
+        console.log('useruseruser ',user);
+        if(user){
+            const userStatus = await User.findOne({_id: user._id, 'candidates.candidate_id':{$eq: supportedCandidate._id}});
+            if(userStatus && userStatus.candidates){
+                for(var i = 0; i < user.candidates.length; i++){
+                    if(user.candidates[i].candidate_id.toHexString() == supportedCandidate._id.toHexString()){
+                        if(user.candidates[i].status != 2){
+                            return res.status(400).send({"userExist":"המשתמש כבר נמצא במערכת"});
+                        }
+                    }
+                    console.log(user.candidates[i].candidate_id , supportedCandidate._id.toHexString(), user.candidates[i].candidate_id == supportedCandidate._id.toHexString());
+                }
+            }
+
+            delete body.ID_card;
+            delete body.candidate_id;
+            
+            user = await User.findByIdAndUpdate(user._id, body ,{new: true});
+
+                console.log("bodyyyy ", body, " user ",user);
+
+        }else{
+            user = new User(body);
+        }
+
+
 
         let bringsUser = await User.findById(req.user._id);
 
         user.role_id = await Role.findOne({name:"User"});
-
         if(!user.role_id) 
             throw {role_id:"notFoundObjectID"}
-
-        const supportedCandidate = await idExist(body.candidate_id,Candidate);
-        // let candidates = {
-        //     candidate: supportedCandidate._id,
-        //     status: 0
-        // }
-        // user.candidates = supportedCandidate._id;
 
         user.candidates[0] = {
             candidate_id: supportedCandidate._id,
@@ -82,20 +102,12 @@ export const createByUser = async (req: Request, res: Response, next: NextFuncti
         };
 
         await user.save();
-        // await updateCandidatesAndAttached(user, supportedCandidate, null, null);
+        // await addCandidate(user._id, supportedCandidate._id);
+        
+        updateUserCandidateAndAttached(bringsUser, supportedCandidate, user, false);
+        updateCandidateUsers(supportedCandidate._id, user._id);
 
-        updateCandidatesAndAttached(bringsUser, supportedCandidate, user, false);
-
-        // let attached = {
-        //     user_id: user._id,
-        //     link: false
-        // }
-        // bringsUser.attached[bringsUser.attached.length] = attached;
-        // await bringsUser.save();
-
-        updateCandidateUsers(supportedCandidate, user, 2);
-
-        let msg = `שלום ${user.first_name}, ${bringsUser.first_name} ${bringsUser.last_name} רשם אותך לתמוך ב${supportedCandidate.name}, נא כנס לאשר https://WinChoise.co.il/users/confirmSupport?phone=${user.phone}&candidate_id=${supportedCandidate._id}`;
+        let msg = `שלום ${user.first_name}, ${bringsUser.first_name} ${bringsUser.last_name} רשם אותך לתמוך ב${supportedCandidate.name}, נא כנס לאשר https://WinChoise.co.il/users/confirmSupport?id=${user._id}&candidate_id=${supportedCandidate._id}`;
         req.sendSms_msg = msg;
         sendSms(req,res,next);
 
@@ -108,14 +120,36 @@ export const createByUser = async (req: Request, res: Response, next: NextFuncti
 export const createByLink = async (req: Request, res: Response) => {
     try{
         // role id of support
-        let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card','agreement']);
+        let body = _.pick(req.body, ['email','first_name','last_name','phone','ID_card']);
 
-        const user = new User(body);
-        let bringsUser = await idExist(req.query.id,User);
         let supportedCandidate = await idExist(req.query.candidate_id,Candidate);
 
-        user.role_id = await Role.findOne({name:"User"});
+        let user = await User.findOne({ID_card: body.ID_card});
+        if(user){
+            const userStatus = await User.findOne({_id: user._id, 'candidates.candidate_id':{$eq: supportedCandidate._id}});
+            if(userStatus && userStatus.candidates){
+                for(var i = 0; i < user.candidates.length; i++){
+                    if(user.candidates[i].candidate_id.toHexString() == supportedCandidate._id.toHexString()){
+                        if(user.candidates[i].status != 2){
+                            return res.status(400).send({"userExist":"המשתמש כבר נמצא במערכת"});
+                        }
+                    }
+                    console.log(user.candidates[i].candidate_id , supportedCandidate._id.toHexString(), user.candidates[i].candidate_id == supportedCandidate._id.toHexString());
+                }
+            }
 
+            delete body.ID_card;
+            delete body.candidate_id;
+            
+            user = await User.findByIdAndUpdate(user._id, body ,{new: true});
+
+        }else{
+            user = new User(body);
+        }
+
+        let bringsUser = await idExist(req.query.id,User);
+
+        user.role_id = await Role.findOne({name:"User"});
         if(!user.role_id) 
             throw {role_id:"notFoundObjectID"}
 
@@ -125,12 +159,8 @@ export const createByLink = async (req: Request, res: Response) => {
     
         await user.save();
 
-        updateCandidatesAndAttached(bringsUser, supportedCandidate, user, true);
-
-        
-        // await bringsUser.save();
-
-        updateCandidateUsers(supportedCandidate, user, 2);
+        updateUserCandidateAndAttached(bringsUser, supportedCandidate, user, true);
+        updateCandidateUsers(supportedCandidate._id, user._id);
         
         const token = await user.generateToken();
         res.header('x-auth',token).send(user);
@@ -142,13 +172,19 @@ export const createByLink = async (req: Request, res: Response) => {
 
 export const confirmSupport = async (req: Request, res: Response, next: NextFunction) => {
     try{
-        const user = await User.findOne({phone:req.query.phone});
-        if(!user) throw 'המספר לא קיים במערכת';
+        // const user = await User.findOne({phone:req.query.phone});
+        //     if(!user) throw 'המספר לא קיים במערכת';
 
-        const candidate = await idExist(req.query.candidate_id,Candidate);
-        const foundUser = await User.findOne({phone:user.phone, candidates: candidate._id});
+        // const candidate = await idExist(req.query.candidate_id,Candidate);
+
+        if(!ObjectId.isValid(req.query.id))
+            return res.status(400).send(responseErrors({id: "ObjectID"}));
+        if(!ObjectId.isValid(req.query.candidate_id))
+            return res.status(400).send({candidate_id: "ObjectID"});
+
+        const foundUser = await User.findOne({_id:req.query.id, 'candidates.candidate_id':{$eq: req.query.candidate_id}});
             if(!foundUser)
-                throw {user:"notFoundObjectID"}
+                return res.status(400).send({"notFound":"נמצאה בעיה בקישור, נא בקש קישור נוסף"});
 
         if(!req.body.status && req.body.status !== 0)
             throw {status: "Number"};
@@ -162,10 +198,8 @@ export const confirmSupport = async (req: Request, res: Response, next: NextFunc
         //     }    
         // }
 
-        await foundUser.save();
+        updateStatus(req.query.candidate_id, req.query.id, req.body.status);
 
-        await updateCandidateUsers(candidate, foundUser, req.body.status);
-        // console.log('updatedCandidate updatedCandidate     ',updatedCandidate);
         res.status(200).send({message:"תודה על תשובתך"});
 
     }catch(e){
@@ -179,66 +213,70 @@ export enum Status {
     reject = 3
 }
 
-export const updateCandidateUsers = async (candidate, user, status) => {
+export const updateCandidateUsers = async (candidate_id, user_id) => {
     
     var usersObj = {
-        user: user._id,
-        status: status
+        user: user_id
+        // status: status
     }
 
-    if(!(status in Status))
-        throw   {status:"userStatus"}
+
 
     // check nested object if value is unique before add, https://stackoverflow.com/questions/15921700/mongoose-unique-values-in-nested-array-of-objects
-    const updatedCandidate = await Candidate.findOneAndUpdate({_id: candidate._id, 'users.user': {$ne: user._id}}, {$push: {users: usersObj}});
+    const updatedCandidate = await Candidate.findOneAndUpdate({_id: candidate_id}, {$addToSet: {users: user_id}});
     // if user already exist, update only is status
-    if(!updatedCandidate)   
-        await Candidate.update({_id: candidate._id, 'users.user': {$eq: user._id}}, {$set:{'users.$.status': status}});   
+    // if(!updatedCandidate)   
+    //     await Candidate.update({_id: candidate_id, 'users.user': {$eq: user_id}}, {$set:{'users.$.status': status}});   
 
     return updatedCandidate;
 }
 
 
-export const updateCandidatesAndAttached = async (bringUser, candidate, newUser, link) => {
+export const addCandidate = async (user_id, candidate_id) => {
+    var emptyCandidateObj = {
+        candidate_id: candidate_id
+        // attached: []
+    }
+    const newCandidate = await User.findOneAndUpdate({_id: user_id, 'candidates.candidate_id':{$ne: candidate_id}}, {$push: {"candidates.$.candidate_id": candidate_id}}, { new: true });
+    console.log('newCandidate ',newCandidate);
+}
 
-    // update user candidate list, only candidate if not exist
-    if(!newUser && !link){
+export const updateStatus = async (candidate_id, user_id, status) => {
 
-        var emptyCandidateObj = {
-            candidate_id: candidate._id,
-            attached: []
-        }
-        const newCandidate = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$ne: candidate._id}}, {$push: {candidates: emptyCandidateObj}}, { new: true });
-        // console.log('newCandidate ',newCandidate);
-    }else{
-        if(link){
-            console.log(bringUser);
-            bringUser.lead_counter++;
-            bringUser.save();
-        }
+    if(!(status in Status))
+        throw {status:"userStatus"}
 
-        var candidateObj = {
-            candidate_id: candidate._id,
-            attached: [{
-                user_id: newUser._id,
-                link: link
-            }]
-        }
-    
-        var attachedObj = {
+    const newStatus = await User.findOneAndUpdate({_id: user_id, 'candidates.candidate_id':{$eq: candidate_id}}, {$set: {'candidates.$.status': status}}, { new: true });
+    console.log('newStatus ',newStatus);
+}
+
+export const updateUserCandidateAndAttached = async (bringUser, candidate, newUser, link: Boolean) => {
+
+    // if(link){
+    //     bringUser.lead_counter++;
+    //     bringUser.save();
+    // }
+
+    var candidateObj = {
+        candidate_id: candidate._id,
+        attached: [{
             user_id: newUser._id,
             link: link
-        }
-        // create new candidate and add user to attached
-        const updatedCandidate = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$ne: candidate._id}}, {$push: {candidates: candidateObj}}, { new: true });
-        // console.log('updatedCandidate1111 ',updatedCandidate)
-    
-        if(!updatedCandidate){
-            // add user to attached if user not exist
-            const updatedUser = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$eq: candidate._id}}, {$push: {'candidates.$.attached': attachedObj}}, { new: true });
-            // console.log('updatedUser ',updatedUser);
-        
-        }
+        }]
+    }
+
+    var attachedObj = {
+        user_id: newUser._id,
+        link: link
+    }
+    // create new candidate and add user to attached
+    const updatedCandidate = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$ne: candidate._id}}, {$push: {candidates: candidateObj}}, { new: true });
+    // console.log('updatedCandidate1111 ',updatedCandidate)
+
+    if(!updatedCandidate){
+        // add user to attached if user not exist
+        const updatedUser = await User.findOneAndUpdate({_id: bringUser._id, 'candidates.candidate_id':{$eq: candidate._id}}, {$push: {'candidates.$.attached': attachedObj}}, { new: true });
+        // console.log('updatedUser ',updatedUser);
     }
 }
 
