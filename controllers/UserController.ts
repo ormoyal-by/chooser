@@ -63,7 +63,6 @@ export const createByUser = async (req: Request, res: Response, next: NextFuncti
         const supportedCandidate = await idExist(body.candidate_id,Candidate);
 
         let user = await User.findOne({ID_card: body.ID_card});
-        console.log('useruseruser ',user);
         if(user){
             const userStatus = await User.findOne({_id: user._id, 'candidates.candidate_id':{$eq: supportedCandidate._id}});
             if(userStatus && userStatus.candidates){
@@ -172,10 +171,6 @@ export const createByLink = async (req: Request, res: Response) => {
 
 export const confirmSupport = async (req: Request, res: Response, next: NextFunction) => {
     try{
-        // const user = await User.findOne({phone:req.query.phone});
-        //     if(!user) throw 'המספר לא קיים במערכת';
-
-        // const candidate = await idExist(req.query.candidate_id,Candidate);
 
         if(!ObjectId.isValid(req.query.id))
             return res.status(400).send(responseErrors({id: "ObjectID"}));
@@ -214,29 +209,18 @@ export enum Status {
 }
 
 export const updateCandidateUsers = async (candidate_id, user_id) => {
-    
-    var usersObj = {
-        user: user_id
-        // status: status
-    }
-
-
-
     // check nested object if value is unique before add, https://stackoverflow.com/questions/15921700/mongoose-unique-values-in-nested-array-of-objects
     const updatedCandidate = await Candidate.findOneAndUpdate({_id: candidate_id}, {$addToSet: {users: user_id}});
-    // if user already exist, update only is status
-    // if(!updatedCandidate)   
-    //     await Candidate.update({_id: candidate_id, 'users.user': {$eq: user_id}}, {$set:{'users.$.status': status}});   
 
     return updatedCandidate;
 }
 
 
 export const addCandidate = async (user_id, candidate_id) => {
-    var emptyCandidateObj = {
-        candidate_id: candidate_id
-        // attached: []
-    }
+    // var emptyCandidateObj = {
+    //     candidate_id: candidate_id
+    //     // attached: []
+    // }
     const newCandidate = await User.findOneAndUpdate({_id: user_id, 'candidates.candidate_id':{$ne: candidate_id}}, {$push: {"candidates.$.candidate_id": candidate_id}}, { new: true });
     console.log('newCandidate ',newCandidate);
 }
@@ -251,11 +235,6 @@ export const updateStatus = async (candidate_id, user_id, status) => {
 }
 
 export const updateUserCandidateAndAttached = async (bringUser, candidate, newUser, link: Boolean) => {
-
-    // if(link){
-    //     bringUser.lead_counter++;
-    //     bringUser.save();
-    // }
 
     var candidateObj = {
         candidate_id: candidate._id,
@@ -284,12 +263,45 @@ export const updateUserCandidateAndAttached = async (bringUser, candidate, newUs
 
 
 
-export const becomeSupport 
+export const becomeSupport = async (req: Request, res: Response, next: NextFunction) => {
+
+    let body = _.pick(req.body, ['email','agreement','id','candidate_id','role_id']);
+    if(!body.agreement || body.agreement != true)
+        throw {agreement:"עליך לאשר את התקנון"}
+
+    
+
+}
 
 
 // support in new candidate
 
 
+
+export const getUsers = (req: Request, res: Response, next: NextFunction) => {
+    // getQueryUrl(req,['id','role_id']).then(search => {
+    if(req.query.id){
+        const id = req.query.id;
+        if(!ObjectId.isValid(id))
+            return res.status(400).send({id: "ObjectID"});
+
+        User.findById(id).then(user => {
+            if(!user)
+                return res.status(404).send(responseErrors({id:"notFoundObjectID"}));
+
+            res.status(200).send(user);
+        }).catch(err => {
+            res.status(400).send(responseErrors(err));
+        });
+    }else{
+        User.find({_id: req.user._id}).populate('candidates.attached.user_id').then(users => {
+            res.status(200).send(users);
+        }).catch(err => {
+            return res.status(400).send(responseErrors(err));
+        });
+    }
+
+});
 
 
 // app.get('/users', (req,res) => {
