@@ -46,7 +46,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         // updateUserCandidateAndAttached(bringsUser, supportedCandidate, user, false);
         
 
-        updateCandidateUsers(supportedCandidate._id, user._id, 2);
+        updateCandidateUsers(supportedCandidate._id, user._id);
         const token = await user.generateToken();
         res.header('x-auth',token).send(user);
 
@@ -55,6 +55,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
         res.status(400).send(responseErrors(err));
     };
 };
+
 
 export const createByUser = async (req: Request, res: Response, next: NextFunction) => {
     try{
@@ -123,10 +124,13 @@ export const createByLink = async (req: Request, res: Response) => {
 
         let supportedCandidate = await idExist(req.query.candidate_id,Candidate);
 
+        // if user already in db
         let user = await User.findOne({ID_card: body.ID_card});
         if(user){
+            // find user by ID_card and candidate_id
             const userStatus = await User.findOne({_id: user._id, 'candidates.candidate_id':{$eq: supportedCandidate._id}});
-            if(userStatus && userStatus.candidates){
+            // if user exist and already have this candidate
+            if(userStatus){
                 for(var i = 0; i < user.candidates.length; i++){
                     if(user.candidates[i].candidate_id.toHexString() == supportedCandidate._id.toHexString()){
                         if(user.candidates[i].status != 2){
@@ -136,7 +140,7 @@ export const createByLink = async (req: Request, res: Response) => {
                     console.log(user.candidates[i].candidate_id , supportedCandidate._id.toHexString(), user.candidates[i].candidate_id == supportedCandidate._id.toHexString());
                 }
             }
-
+            // user exist but dont have this candidate
             delete body.ID_card;
             delete body.candidate_id;
             
@@ -145,13 +149,14 @@ export const createByLink = async (req: Request, res: Response) => {
         }else{
             user = new User(body);
         }
-
+        // check if the user that bring the new user, if exist
         let bringsUser = await idExist(req.query.id,User);
 
         user.role_id = await Role.findOne({name:"User"});
         if(!user.role_id) 
             throw {role_id:"notFoundObjectID"}
 
+        // add to the user the first candidate? and what if he is already exist with other candidate?
         user.candidates[0] = {
             candidate_id: supportedCandidate._id
         };
